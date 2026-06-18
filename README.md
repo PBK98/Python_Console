@@ -7,15 +7,15 @@ Python 표준 라이브러리만 사용한 파일 기반 가계부 콘솔 프로
 Python 3.10 이상에서 실행합니다.
 
 ```bash
-python -m budget_app --help
-python -m budget_app add
-python -m budget_app list --limit 5
+python3 -m budget_app --help
+python3 -m budget_app add
+python3 -m budget_app list --limit 5
 ```
 
 저장 디렉토리를 바꾸고 싶으면 전역 옵션 `--data-dir`를 사용합니다.
 
 ```bash
-python -m budget_app --data-dir ./my_data list
+python3 -m budget_app --data-dir ./my_data list
 ```
 
 ## 저장 파일
@@ -48,62 +48,62 @@ food, transport, rent, salary, etc
 거래 추가는 대화형 입력으로 진행합니다.
 
 ```bash
-python -m budget_app add
+python3 -m budget_app add
 ```
 
 거래 목록:
 
 ```bash
-python -m budget_app list --limit 3
+python3 -m budget_app list --limit 3
 ```
 
 거래 검색:
 
 ```bash
-python -m budget_app search --from 2024-01-01 --to 2024-01-31 --category food
-python -m budget_app search --type expense --tag meal
+python3 -m budget_app search --from 2024-01-01 --to 2024-01-31 --category food
+python3 -m budget_app search --type expense --tag meal
 ```
 
 월별 요약:
 
 ```bash
-python -m budget_app summary --month 2024-01 --top 3
+python3 -m budget_app summary --month 2024-01 --top 3
 ```
 
 예산 설정:
 
 ```bash
-python -m budget_app budget set --month 2024-01 --amount 500000
-python -m budget_app budget list
-python -m budget_app budget show --month 2024-01
+python3 -m budget_app budget set --month 2024-01 --amount 500000
+python3 -m budget_app budget list
+python3 -m budget_app budget show --month 2024-01
 ```
 
 카테고리 관리:
 
 ```bash
-python -m budget_app category list
-python -m budget_app category add
-python -m budget_app category remove --name food
+python3 -m budget_app category list
+python3 -m budget_app category add
+python3 -m budget_app category remove --name food
 ```
 
 거래 수정은 옵션 방식으로 고정했습니다.
 
 ```bash
-python -m budget_app update --id TX-000001 --amount 18000 --memo "저녁"
+python3 -m budget_app update --id TX-000001 --amount 18000 --memo "저녁"
 ```
 
 거래 삭제:
 
 ```bash
-python -m budget_app delete --id TX-000001
+python3 -m budget_app delete --id TX-000001
 ```
 
 CSV 가져오기/내보내기:
 
 ```bash
-python -m budget_app import --from import.csv
-python -m budget_app export --out export.csv --month 2024-01
-python -m budget_app export --out export.csv --from 2024-01-01 --to 2024-01-31
+python3 -m budget_app import --from import.csv
+python3 -m budget_app export --out export.csv --month 2024-01
+python3 -m budget_app export --out export.csv --from 2024-01-01 --to 2024-01-31
 ```
 
 ## Import/Export CSV 스키마
@@ -145,8 +145,8 @@ CLI -> Service -> Repository -> JSONL File
 | 파일 | 역할 |
 | --- | --- |
 | `budget_app/__init__.py` | `budget_app` 디렉토리를 Python 패키지로 인식하게 하는 파일입니다. |
-| `budget_app/__main__.py` | `python -m budget_app` 실행 시 호출되는 진입점입니다. 내부에서 `cli.main()`을 실행합니다. |
-| `budget_app/cli.py` | 터미널 명령어와 옵션을 정의합니다. `argparse`로 입력을 해석하고, 적절한 service 함수를 호출한 뒤 결과를 출력합니다. |
+| `budget_app/__main__.py` | `python3 -m budget_app` 실행 시 호출되는 진입점입니다. 내부에서 `cli.main()`을 실행합니다. |
+| `budget_app/cli.py` | 터미널 명령어와 옵션을 정의합니다. `ParserBuilder`, `ServiceFactory`, `CommandRunner`, `ConsolePrinter`로 CLI 구성, 서비스 조립, 실행, 출력을 나눕니다. |
 | `budget_app/models.py` | `Transaction`, `Budget`, `SearchCriteria` 같은 데이터 구조를 `dataclass`로 정의합니다. |
 | `budget_app/repositories.py` | JSONL 저장 파일을 생성, 읽기, 추가, 재작성합니다. 거래 데이터는 `yield`로 한 줄씩 스트리밍합니다. |
 | `budget_app/services.py` | 거래 추가, 목록, 검색, 요약, 예산, 카테고리, import/export 같은 핵심 기능 로직을 담당합니다. |

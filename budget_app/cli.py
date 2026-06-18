@@ -21,7 +21,7 @@ class ParserBuilder:
     """CLI 명령어와 옵션을 구성하는 책임만 맡는다."""
 
     def build(self) -> argparse.ArgumentParser:
-        parser = argparse.ArgumentParser(prog="python -m budget_app")
+        parser = argparse.ArgumentParser(prog="python3 -m budget_app")
         parser.add_argument("--data-dir", default="./data", help="저장 파일 디렉토리")
 
         # add/list/search 같은 1단계 명령어는 args.command에 저장된다.
