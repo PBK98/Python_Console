@@ -62,12 +62,12 @@
   <text x="132" y="357" class="box-text">argparse 구성</text>
 
   <rect x="390" y="315" width="190" height="58" class="box classbox" />
-  <text x="412" y="338" class="box-title">ServiceFactory</text>
-  <text x="412" y="357" class="box-text">service 조립</text>
+  <text x="412" y="338" class="box-title">CommandRunner</text>
+  <text x="412" y="357" class="box-text">명령 실행</text>
 
   <rect x="670" y="315" width="190" height="58" class="box classbox" />
-  <text x="692" y="338" class="box-title">CommandRunner</text>
-  <text x="692" y="357" class="box-text">명령 실행</text>
+  <text x="692" y="338" class="box-title">ServiceFactory</text>
+  <text x="692" y="357" class="box-text">service 조립</text>
 
   <rect x="950" y="315" width="190" height="58" class="box classbox" />
   <text x="972" y="338" class="box-title">ConsolePrinter</text>
@@ -76,7 +76,7 @@
   <path d="M805 202 V250 H205 V315" class="arrow" />
   <path d="M300 344 H390" class="arrow" />
   <path d="M580 344 H670" class="arrow" />
-  <path d="M860 344 H950" class="soft-arrow" />
+  <path d="M580 358 H950" class="soft-arrow" />
 
   <!-- Services -->
   <rect x="50" y="440" width="1180" height="150" class="band" />
@@ -94,9 +94,13 @@
   <text x="932" y="523" class="box-title">BudgetService</text>
   <text x="932" y="542" class="box-text">월별 예산</text>
 
-  <path d="M765 373 V420 H255 V500" class="arrow" />
-  <path d="M765 373 V420 H640 V500" class="arrow" />
-  <path d="M765 373 V420 H1025 V500" class="arrow" />
+  <path d="M485 373 V420 H255 V500" class="arrow" />
+  <path d="M485 373 V420 H640 V500" class="arrow" />
+  <path d="M485 373 V420 H1025 V500" class="arrow" />
+  <path d="M765 373 V430 H255 V500" class="soft-arrow" />
+  <path d="M765 373 V430 H640 V500" class="soft-arrow" />
+  <path d="M765 373 V430 H1025 V500" class="soft-arrow" />
+  <path d="M370 529 H525" class="soft-arrow" />
 
   <!-- Repositories -->
   <rect x="50" y="625" width="1180" height="120" class="band" />
@@ -114,6 +118,9 @@
   <path d="M255 558 V680" class="arrow" />
   <path d="M640 558 V680" class="arrow" />
   <path d="M1025 558 V680" class="arrow" />
+  <path d="M310 558 C380 600,225 635,255 680" class="soft-arrow" />
+  <path d="M585 558 C510 600,285 635,255 680" class="soft-arrow" />
+  <path d="M315 558 C610 590,905 620,1025 680" class="soft-arrow" />
 
   <!-- Data -->
   <rect x="50" y="780" width="1180" height="80" class="band" />
@@ -153,6 +160,8 @@
   <path d="M255 500 C230 465,170 465,148 602" class="soft-arrow" />
   <path d="M255 500 C260 465,280 465,280 602" class="soft-arrow" />
   <path d="M255 500 C300 465,412 465,412 602" class="soft-arrow" />
-  <path d="M765 315 C800 265,870 255,875 249" class="soft-arrow" />
-  <path d="M765 315 C840 250,990 248,1020 249" class="soft-arrow" />
+  <path d="M485 315 C590 260,830 255,875 249" class="soft-arrow" />
+  <path d="M485 315 C640 250,975 248,1020 249" class="soft-arrow" />
+  <path d="M640 500 C735 425,930 310,1020 249" class="soft-arrow" />
+  <path d="M1025 500 C1095 420,1095 310,1072 263" class="soft-arrow" />
 </svg>
