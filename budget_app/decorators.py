@@ -13,6 +13,7 @@ F = TypeVar("F", bound=Callable[..., int])
 
 
 def handle_errors(func: F) -> F:
+    # CLI 명령어 실행 함수를 감싸 사용자 친화적인 오류 메시지와 종료 코드를 보장한다.
     @wraps(func)
     def wrapper(*args, **kwargs) -> int:
         try:
@@ -47,6 +48,7 @@ def handle_errors(func: F) -> F:
 
 
 def measure_time(func: F) -> F:
+    # 명령 실행 시간을 공통으로 출력하기 위한 데코레이터다.
     @wraps(func)
     def wrapper(*args, **kwargs) -> int:
         started_at = perf_counter()

@@ -13,6 +13,7 @@ DEFAULT_CATEGORIES = ["food", "transport", "rent", "salary", "etc"]
 
 
 class JsonlStore:
+    # 저장 경로를 한곳에서 관리해서 repository들이 같은 파일 위치를 공유한다.
     def __init__(self, data_dir: str = "./data") -> None:
         self.data_dir = Path(data_dir)
         self.transactions_path = self.data_dir / "transactions.jsonl"
@@ -31,6 +32,7 @@ class JsonlStore:
 
 
 class TransactionRepository:
+    # 거래 파일 입출력만 담당하고, 검색/요약 같은 의미 있는 로직은 service에 맡긴다.
     def __init__(self, store: JsonlStore) -> None:
         self.store = store
 
@@ -45,6 +47,7 @@ class TransactionRepository:
     def append(self, transaction: Transaction) -> None:
         self.store.initialize()
         with self.store.transactions_path.open("a", encoding="utf-8") as file:
+            # JSONL은 한 줄에 JSON 객체 하나를 저장하므로 append가 쉽다.
             file.write(json.dumps(transaction.to_dict(), ensure_ascii=False) + "\n")
 
     def rewrite(self, transactions: Iterable[Transaction]) -> None:
@@ -63,6 +66,7 @@ class TransactionRepository:
 
 
 class CategoryRepository:
+    # 카테고리는 단순 문자열 목록이지만 파일 형식은 JSONL로 통일한다.
     def __init__(self, store: JsonlStore) -> None:
         self.store = store
 
@@ -79,11 +83,13 @@ class CategoryRepository:
     def write_categories(self, categories: list[str]) -> None:
         self.store.initialize()
         with self.store.categories_path.open("w", encoding="utf-8") as file:
+            # set으로 중복을 제거하고 정렬해서 매번 같은 순서로 저장한다.
             for category in sorted(set(categories)):
                 file.write(json.dumps({"name": category}, ensure_ascii=False) + "\n")
 
 
 class BudgetRepository:
+    # 예산은 월별로 하나만 존재하도록 upsert 방식으로 저장한다.
     def __init__(self, store: JsonlStore) -> None:
         self.store = store
 
@@ -103,6 +109,7 @@ class BudgetRepository:
         return None
 
     def upsert(self, budget: Budget) -> None:
+        # 같은 month의 기존 예산을 제거한 뒤 새 예산을 추가한다.
         budgets = [item for item in self.list_all() if item.month != budget.month]
         budgets.append(budget)
         with self.store.budgets_path.open("w", encoding="utf-8") as file:

@@ -19,6 +19,7 @@ from budget_app.validators import (
 
 
 class CategoryService:
+    # 카테고리 관련 비즈니스 규칙을 담당한다.
     def __init__(
         self,
         categories: CategoryRepository,
@@ -31,6 +32,7 @@ class CategoryService:
         return self.categories.list_all()
 
     def add_category(self, name: str) -> None:
+        # 공백 이름과 중복 이름은 저장하지 않는다.
         name = name.strip()
         if not name:
             raise ValidationError("카테고리명은 비어 있을 수 없습니다.")
@@ -62,6 +64,7 @@ class CategoryService:
 
 
 class BudgetService:
+    # 예산 저장/조회 기능을 repository보다 한 단계 높은 의미로 제공한다.
     def __init__(self, budgets: BudgetRepository) -> None:
         self.budgets = budgets
 
@@ -78,6 +81,7 @@ class BudgetService:
 
 
 class TransactionService:
+    # 거래 중심 기능을 담당하며, 카테고리와 예산 저장소를 함께 사용한다.
     def __init__(
         self,
         transactions: TransactionRepository,
@@ -108,6 +112,7 @@ class TransactionService:
             tags=parse_tags(tags),
         )
         self.categories.ensure_exists(transaction.category)
+        # 모든 검증을 통과한 뒤에만 파일에 추가한다.
         self.transactions.append(transaction)
         return transaction
 
@@ -147,6 +152,7 @@ class TransactionService:
                     yield transaction
 
         self.transactions.rewrite(iter_updated())
+        # rewrite가 제너레이터를 끝까지 소비한 뒤에야 updated 값이 결정된다.
         if updated is None:
             raise NotFoundError("해당 id의 거래가 없습니다.", transaction_id)
 
@@ -165,6 +171,7 @@ class TransactionService:
                     yield transaction
 
         self.transactions.rewrite(iter_remaining())
+        # 없는 id라면 파일 내용은 동일하게 다시 쓰이고 사용자에게 실패를 알린다.
         if not found:
             raise NotFoundError("해당 id의 거래가 없습니다.", transaction_id)
 
@@ -197,6 +204,7 @@ class TransactionService:
         usage_rate = None
         is_over_budget = False
         if budget:
+            # 예산이 설정된 달에만 사용률과 초과 여부를 계산한다.
             usage_rate = (total_expense / budget.amount) * 100
             is_over_budget = total_expense > budget.amount
 
@@ -287,6 +295,7 @@ class TransactionService:
         return f"TX-{last_number + 1:06d}"
 
     def _apply_updates(self, transaction: Transaction, updates: dict[str, str | None]) -> Transaction:
+        # 입력된 필드만 검증한 뒤 기존 Transaction의 일부 값을 교체한다.
         data: dict[str, object] = {}
         if updates.get("date"):
             data["date"] = validate_date(str(updates["date"]))
@@ -305,6 +314,7 @@ class TransactionService:
         return replace(transaction, **data)
 
     def _validate_criteria(self, criteria: SearchCriteria) -> None:
+        # 검색 조건 자체가 잘못됐으면 파일을 읽기 전에 실패시킨다.
         if criteria.date_from:
             validate_date(criteria.date_from)
         if criteria.date_to:
@@ -315,6 +325,7 @@ class TransactionService:
             validate_type(criteria.type)
 
     def _matches(self, transaction: Transaction, criteria: SearchCriteria) -> bool:
+        # 하나라도 조건에 맞지 않으면 False를 반환하는 방식으로 필터링한다.
         if criteria.month and not transaction.date.startswith(criteria.month):
             return False
         if criteria.date_from and transaction.date < criteria.date_from:

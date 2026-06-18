@@ -25,6 +25,7 @@ def top_latest(transactions: Iterable[Transaction], limit: int) -> list[Transact
 
 
 def iter_latest(transactions: Iterable[Transaction]) -> Iterator[Transaction]:
+    # search/export는 결과 전체가 많을 수 있으므로 외부 정렬 방식으로 처리한다.
     chunk_paths: list[Path] = []
     iterator = iter(transactions)
 
@@ -54,6 +55,7 @@ def _iter_chunk(
     path: Path,
     chunk_position: int,
 ) -> Iterator[tuple[tuple[int, int], tuple[int, int], Transaction]]:
+    # heapq.merge가 비교할 정렬 키와 실제 Transaction을 함께 흘려보낸다.
     with path.open("r", encoding="utf-8") as file:
         for index, line in enumerate(file):
             transaction = Transaction.from_dict(json.loads(line))
@@ -61,6 +63,7 @@ def _iter_chunk(
 
 
 def _write_chunk(transactions: list[Transaction]) -> Path:
+    # 정렬된 작은 묶음을 임시 JSONL 파일로 저장해 메모리 사용량을 제한한다.
     fd, temp_name = tempfile.mkstemp(prefix="budget-sort-", suffix=".jsonl", text=True)
     path = Path(temp_name)
     with os.fdopen(fd, "w", encoding="utf-8") as file:
@@ -76,6 +79,7 @@ def _merge_key(transaction: Transaction) -> tuple[int, int]:
 
 
 def _id_number(transaction_id: str) -> int:
+    # TX-000012 형태의 id에서 숫자 부분을 꺼내 정렬 보조 키로 사용한다.
     if transaction_id.startswith("TX-"):
         try:
             return int(transaction_id.replace("TX-", ""))

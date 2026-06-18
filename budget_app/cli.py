@@ -12,6 +12,7 @@ from budget_app.services import BudgetService, CategoryService, TransactionServi
 
 @dataclass
 class AppServices:
+    # CommandRunner가 필요한 service들을 한 번에 넘겨받기 위한 작은 묶음이다.
     transactions: TransactionService
     categories: CategoryService
     budgets: BudgetService
@@ -41,6 +42,7 @@ class ParserBuilder:
         return parser
 
     def add_list_parser(self, subparsers) -> None:
+        # list는 최신 거래 일부만 보고 싶을 때를 위해 --limit을 제공한다.
         list_parser = subparsers.add_parser("list", help="거래 목록")
         list_parser.add_argument("--limit", type=int, default=10)
 
@@ -49,6 +51,7 @@ class ParserBuilder:
         self.add_search_options(search_parser)
 
     def add_summary_parser(self, subparsers) -> None:
+        # summary는 특정 월을 반드시 지정해야 의미 있는 집계가 가능하다.
         summary_parser = subparsers.add_parser("summary", help="월별 요약")
         summary_parser.add_argument("--month", required=True)
         summary_parser.add_argument("--top", type=int, default=3)
@@ -76,6 +79,7 @@ class ParserBuilder:
         category_remove_parser.add_argument("--name", required=True)
 
     def add_update_parser(self, subparsers) -> None:
+        # update는 대화형이 아니라 옵션 기반 방식으로 고정했다.
         update_parser = subparsers.add_parser("update", help="거래 수정")
         update_parser.add_argument("--id", required=True)
         update_parser.add_argument("--date")
@@ -90,6 +94,7 @@ class ParserBuilder:
         delete_parser.add_argument("--id", required=True)
 
     def add_import_parser(self, subparsers) -> None:
+        # from은 Python 예약어라 argparse 결과 이름은 input_path로 바꾼다.
         import_parser = subparsers.add_parser("import", help="CSV 가져오기")
         import_parser.add_argument("--from", dest="input_path", required=True)
 
@@ -113,6 +118,7 @@ class ServiceFactory:
     """Repository와 service 객체를 조립한다."""
 
     def build(self, data_dir: str) -> AppServices:
+        # 모든 repository는 같은 JsonlStore를 공유해서 동일한 data_dir을 바라본다.
         store = JsonlStore(data_dir)
         transaction_repository = TransactionRepository(store)
         category_repository = CategoryRepository(store)
@@ -171,6 +177,7 @@ class CommandRunner:
         self.printer = printer or ConsolePrinter()
 
     def run(self, args: argparse.Namespace) -> int:
+        # args.command에는 add_subparsers(dest="command")에서 지정한 명령어명이 들어온다.
         services = self.service_factory.build(args.data_dir)
 
         if args.command == "add":
@@ -215,6 +222,7 @@ class CommandRunner:
         return 0
 
     def run_list(self, service: TransactionService, limit: int) -> int:
+        # service는 데이터를 찾고, printer는 화면 출력만 담당한다.
         transactions = service.list_transactions(limit)
         self.printer.print_transactions(transactions)
         return 0
@@ -230,6 +238,7 @@ class CommandRunner:
             print("데이터 없음")
             return 0
 
+        # summary 결과는 dict로 받아 CLI가 사용자에게 보여줄 문장으로 바꾼다.
         print(f"총 수입: {summary['total_income']}원")
         print(f"총 지출: {summary['total_expense']}원")
         print(f"잔액: {summary['balance']}원")
@@ -308,16 +317,19 @@ class CommandRunner:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    # 기존 함수형 진입점을 유지해서 __main__.py와 테스트 코드가 그대로 사용할 수 있게 한다.
     return ParserBuilder().build()
 
 
 @handle_errors
 @measure_time
 def run(args: argparse.Namespace) -> int:
+    # 데코레이터가 예외 처리와 실행 시간 출력을 감싼다.
     return CommandRunner().run(args)
 
 
 def main(argv: list[str] | None = None) -> int:
+    # argv를 넘기면 테스트에서 원하는 인자를 직접 주입할 수 있고, None이면 실제 CLI 인자를 읽는다.
     parser = build_parser()
     args = parser.parse_args(argv)
     return run(args)
