@@ -4,7 +4,7 @@ import json
 import os
 import tempfile
 from pathlib import Path
-from typing import Iterator
+from typing import Iterable, Iterator
 
 from budget_app.models import Budget, Transaction
 
@@ -20,6 +20,7 @@ class JsonlStore:
         self.budgets_path = self.data_dir / "budgets.jsonl"
 
     def initialize(self) -> None:
+        # 첫 실행에서도 바로 사용할 수 있도록 저장 폴더와 파일을 준비한다.
         self.data_dir.mkdir(parents=True, exist_ok=True)
         for path in (self.transactions_path, self.categories_path, self.budgets_path):
             path.touch(exist_ok=True)
@@ -38,6 +39,7 @@ class TransactionRepository:
         with self.store.transactions_path.open("r", encoding="utf-8") as file:
             for line in file:
                 if line.strip():
+                    # yield로 한 줄씩 돌려주면 큰 파일도 필요한 만큼만 메모리에 올라간다.
                     yield Transaction.from_dict(json.loads(line))
 
     def append(self, transaction: Transaction) -> None:
@@ -45,7 +47,7 @@ class TransactionRepository:
         with self.store.transactions_path.open("a", encoding="utf-8") as file:
             file.write(json.dumps(transaction.to_dict(), ensure_ascii=False) + "\n")
 
-    def rewrite(self, transactions: list[Transaction]) -> None:
+    def rewrite(self, transactions: Iterable[Transaction]) -> None:
         self.store.initialize()
         directory = self.store.transactions_path.parent
         fd, temp_name = tempfile.mkstemp(dir=directory, text=True)
@@ -53,6 +55,7 @@ class TransactionRepository:
             with os.fdopen(fd, "w", encoding="utf-8") as temp_file:
                 for transaction in transactions:
                     temp_file.write(json.dumps(transaction.to_dict(), ensure_ascii=False) + "\n")
+            # 쓰기가 모두 성공한 뒤 한 번에 교체해서 파일이 반쯤만 저장되는 상황을 줄인다.
             os.replace(temp_name, self.store.transactions_path)
         except Exception:
             Path(temp_name).unlink(missing_ok=True)

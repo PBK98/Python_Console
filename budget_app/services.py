@@ -3,10 +3,12 @@ from __future__ import annotations
 import csv
 from dataclasses import replace
 from pathlib import Path
+from typing import Iterable, Iterator
 
 from budget_app.errors import NotFoundError, ValidationError
 from budget_app.models import Budget, SearchCriteria, Transaction
 from budget_app.repositories import BudgetRepository, CategoryRepository, TransactionRepository
+from budget_app.sorting import iter_latest, top_latest
 from budget_app.validators import (
     parse_tags,
     validate_amount,
@@ -42,6 +44,7 @@ class CategoryService:
         categories = self.categories.list_all()
         if name not in categories:
             raise NotFoundError("존재하지 않는 카테고리입니다.", name)
+        # 이미 거래에서 쓰는 카테고리를 삭제하면 데이터 일관성이 깨진다.
         for transaction in self.transactions.iter_all():
             if transaction.category == name:
                 raise ValidationError(
@@ -67,6 +70,12 @@ class BudgetService:
         self.budgets.upsert(budget)
         return budget
 
+    def list_budgets(self) -> list[Budget]:
+        return self.budgets.list_all()
+
+    def show_budget(self, month: str) -> Budget | None:
+        return self.budgets.find_by_month(validate_month(month))
+
 
 class TransactionService:
     def __init__(
@@ -88,6 +97,7 @@ class TransactionService:
         memo: str = "",
         tags: str | None = None,
     ) -> Transaction:
+        # 입력값 검증과 id 생성은 저장 전에 끝내서 잘못된 데이터가 파일에 남지 않게 한다.
         transaction = Transaction(
             id=self.next_id(),
             date=validate_date(date),
@@ -101,51 +111,62 @@ class TransactionService:
         self.transactions.append(transaction)
         return transaction
 
-    def list_transactions(self, limit: int) -> list[Transaction]:
+    def list_transactions(self, limit: int) -> Iterable[Transaction]:
         if limit <= 0:
             raise ValidationError("--limit은 1 이상이어야 합니다.")
-        return sorted(self.transactions.iter_all(), key=lambda item: item.date, reverse=True)[:limit]
+        # 전체 파일을 리스트로 만들지 않고 최신 N개만 유지한다.
+        return top_latest(self.transactions.iter_all(), limit)
 
-    def search(self, criteria: SearchCriteria) -> list[Transaction]:
+    def search(self, criteria: SearchCriteria) -> Iterator[Transaction]:
         self._validate_criteria(criteria)
-        matches = [
+        # 조건 검사는 파일을 한 줄씩 읽는 동안 수행한다.
+        matches = (
             transaction
             for transaction in self.transactions.iter_all()
             if self._matches(transaction, criteria)
-        ]
-        return sorted(matches, key=lambda item: item.date, reverse=True)
+        )
+        return iter_latest(matches)
 
     def update_transaction(self, transaction_id: str, updates: dict[str, str | None]) -> Transaction:
+        if all(value is None for value in updates.values()):
+            raise ValidationError(
+                "수정할 필드가 없습니다.",
+                "--date, --type, --category, --amount, --memo, --tags 중 하나 이상 입력하세요.",
+            )
+
         updated: Transaction | None = None
-        new_transactions: list[Transaction] = []
 
-        for transaction in self.transactions.iter_all():
-            if transaction.id == transaction_id:
-                updated = self._apply_updates(transaction, updates)
-                new_transactions.append(updated)
-            else:
-                new_transactions.append(transaction)
+        def iter_updated() -> Iterator[Transaction]:
+            # rewrite가 이 제너레이터를 소비하면서 새 파일을 만든다.
+            nonlocal updated
+            for transaction in self.transactions.iter_all():
+                if transaction.id == transaction_id:
+                    updated = self._apply_updates(transaction, updates)
+                    yield updated
+                else:
+                    yield transaction
 
+        self.transactions.rewrite(iter_updated())
         if updated is None:
             raise NotFoundError("해당 id의 거래가 없습니다.", transaction_id)
 
-        self.transactions.rewrite(new_transactions)
         return updated
 
     def delete_transaction(self, transaction_id: str) -> None:
         found = False
-        remaining: list[Transaction] = []
 
-        for transaction in self.transactions.iter_all():
-            if transaction.id == transaction_id:
-                found = True
-            else:
-                remaining.append(transaction)
+        def iter_remaining() -> Iterator[Transaction]:
+            # 삭제 대상만 건너뛰고 나머지는 그대로 새 파일에 흘려보낸다.
+            nonlocal found
+            for transaction in self.transactions.iter_all():
+                if transaction.id == transaction_id:
+                    found = True
+                else:
+                    yield transaction
 
+        self.transactions.rewrite(iter_remaining())
         if not found:
             raise NotFoundError("해당 id의 거래가 없습니다.", transaction_id)
-
-        self.transactions.rewrite(remaining)
 
     def summarize(self, month: str, top: int) -> dict[str, object]:
         month = validate_month(month)
@@ -158,6 +179,7 @@ class TransactionService:
         count = 0
 
         criteria = SearchCriteria(month=month)
+        # summary는 정렬이 필요 없으므로 스트리밍으로 누적 합계만 계산한다.
         for transaction in self.transactions.iter_all():
             if not self._matches(transaction, criteria):
                 continue
@@ -198,16 +220,21 @@ class TransactionService:
             )
 
         self._validate_criteria(criteria)
-        rows = [transaction for transaction in self.transactions.iter_all() if self._matches(transaction, criteria)]
-        rows = sorted(rows, key=lambda item: item.date, reverse=True)
+        rows = (
+            transaction
+            for transaction in self.transactions.iter_all()
+            if self._matches(transaction, criteria)
+        )
         path = Path(output_path)
+        count = 0
         with path.open("w", encoding="utf-8", newline="") as file:
             writer = csv.DictWriter(
                 file,
                 fieldnames=["date", "type", "category", "amount", "memo", "tags"],
             )
             writer.writeheader()
-            for transaction in rows:
+            # export 결과도 최신순이어야 하므로 chunk 정렬 제너레이터를 거친다.
+            for transaction in iter_latest(rows):
                 writer.writerow(
                     {
                         "date": transaction.date,
@@ -218,7 +245,8 @@ class TransactionService:
                         "tags": ",".join(transaction.tags or []),
                     }
                 )
-        return len(rows)
+                count += 1
+        return count
 
     def import_csv(self, input_path: str) -> tuple[int, int]:
         imported = 0
@@ -243,11 +271,13 @@ class TransactionService:
                     )
                     imported += 1
                 except ValidationError:
+                    # 잘못된 행 하나 때문에 전체 import가 멈추지 않게 건너뛴다.
                     skipped += 1
         return imported, skipped
 
     def next_id(self) -> str:
         last_number = 0
+        # 기존 id 중 가장 큰 번호를 찾아 다음 id를 만든다.
         for transaction in self.transactions.iter_all():
             if transaction.id.startswith("TX-"):
                 try:
@@ -300,4 +330,3 @@ class TransactionService:
         if criteria.tag and criteria.tag not in (transaction.tags or []):
             return False
         return True
-

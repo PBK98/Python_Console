@@ -1,17 +1,20 @@
 from __future__ import annotations
 
 import argparse
+from typing import Iterable
 
 from budget_app.decorators import handle_errors, measure_time
-from budget_app.models import SearchCriteria, Transaction
+from budget_app.models import Budget, SearchCriteria, Transaction
 from budget_app.repositories import BudgetRepository, CategoryRepository, JsonlStore, TransactionRepository
 from budget_app.services import BudgetService, CategoryService, TransactionService
 
 
 def build_parser() -> argparse.ArgumentParser:
+    # CLI에서 받을 수 있는 명령어와 옵션을 한곳에서 정의한다.
     parser = argparse.ArgumentParser(prog="python -m budget_app")
     parser.add_argument("--data-dir", default="./data", help="저장 파일 디렉토리")
 
+    # add/list/search 같은 1단계 명령어는 args.command에 저장된다.
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     subparsers.add_parser("add", help="거래 추가")
@@ -27,10 +30,14 @@ def build_parser() -> argparse.ArgumentParser:
     summary_parser.add_argument("--top", type=int, default=3)
 
     budget_parser = subparsers.add_parser("budget", help="예산 관리")
+    # budget set/list/show처럼 한 번 더 나뉘는 명령어는 별도 subparser를 둔다.
     budget_subparsers = budget_parser.add_subparsers(dest="budget_command", required=True)
     budget_set_parser = budget_subparsers.add_parser("set", help="월 예산 설정")
     budget_set_parser.add_argument("--month", required=True)
     budget_set_parser.add_argument("--amount", required=True)
+    budget_subparsers.add_parser("list", help="예산 목록")
+    budget_show_parser = budget_subparsers.add_parser("show", help="월 예산 조회")
+    budget_show_parser.add_argument("--month", required=True)
 
     category_parser = subparsers.add_parser("category", help="카테고리 관리")
     category_subparsers = category_parser.add_subparsers(dest="category_command", required=True)
@@ -62,6 +69,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def add_search_options(parser: argparse.ArgumentParser) -> None:
+    # search와 export가 같은 필터 옵션을 쓰므로 중복 등록을 피한다.
     parser.add_argument("--from", dest="date_from")
     parser.add_argument("--to", dest="date_to")
     parser.add_argument("--category")
@@ -74,6 +82,7 @@ def add_search_options(parser: argparse.ArgumentParser) -> None:
 @handle_errors
 @measure_time
 def run(args: argparse.Namespace) -> int:
+    # CLI는 파일을 직접 다루지 않고 repository/service 객체를 조립해 호출만 한다.
     store = JsonlStore(args.data_dir)
     transaction_repository = TransactionRepository(store)
     category_repository = CategoryRepository(store)
@@ -117,6 +126,7 @@ def run(args: argparse.Namespace) -> int:
 
 
 def run_add(service: TransactionService) -> int:
+    # add는 과제 요구사항에 맞춰 대화형 입력으로 처리한다.
     date = input("날짜(YYYY-MM-DD): ").strip()
     type_ = input("타입(income/expense): ").strip()
     category = input("카테고리: ").strip()
@@ -168,6 +178,16 @@ def run_budget(service: BudgetService, args: argparse.Namespace) -> int:
         budget = service.set_budget(args.month, args.amount)
         print(f"[저장 완료] {budget.month} 예산 {budget.amount}원")
         return 0
+    if args.budget_command == "list":
+        print_budgets(service.list_budgets())
+        return 0
+    if args.budget_command == "show":
+        budget = service.show_budget(args.month)
+        if budget is None:
+            print("데이터 없음")
+            return 0
+        print_budget(budget)
+        return 0
     return 1
 
 
@@ -205,6 +225,7 @@ def run_update(service: TransactionService, args: argparse.Namespace) -> int:
 
 
 def criteria_from_args(args: argparse.Namespace) -> SearchCriteria:
+    # argparse 결과를 서비스 계층에서 쓰기 좋은 검색 조건 객체로 변환한다.
     return SearchCriteria(
         date_from=getattr(args, "date_from", None),
         date_to=getattr(args, "date_to", None),
@@ -216,20 +237,34 @@ def criteria_from_args(args: argparse.Namespace) -> SearchCriteria:
     )
 
 
-def print_transactions(transactions: list[Transaction]) -> None:
-    if not transactions:
-        print("데이터 없음")
-        return
+def print_transactions(transactions: Iterable[Transaction]) -> None:
+    # Iterable을 그대로 순회하므로 search 결과 제너레이터도 바로 출력할 수 있다.
+    printed = False
     for transaction in transactions:
+        printed = True
         tags = ",".join(transaction.tags or [])
         print(
             f"{transaction.id} | {transaction.date} | {transaction.type:<7} | "
             f"{transaction.category} | {transaction.amount} | {transaction.memo} | {tags}"
         )
+    if not printed:
+        print("데이터 없음")
+
+
+def print_budgets(budgets: Iterable[Budget]) -> None:
+    printed = False
+    for budget in budgets:
+        printed = True
+        print_budget(budget)
+    if not printed:
+        print("데이터 없음")
+
+
+def print_budget(budget: Budget) -> None:
+    print(f"{budget.month} | {budget.amount}원")
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     return run(args)
-
