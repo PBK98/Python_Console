@@ -324,8 +324,4 @@ def show_budget(self, month: str) -> Budget | None:
 보너스에 해당할 수 있는 구현 요소는 다음과 같습니다.
 
 - `update/delete`에서 임시 파일과 `os.replace()`를 사용해 원자적 교체 방식 적용
-- `list --limit`에서 heap을 사용해 최신 N개만 유지
-- `search/export`에서 chunk 단위 임시 파일 정렬을 사용해 대용량 결과 정렬 대응
-- `decorators.py`로 오류 처리와 실행 시간 측정을 공통 관심사로 분리
-- `docs/source_architecture.svg`로 소스코드 아키텍처 시각화
 
