@@ -1,0 +1,4 @@
+date,type,category,amount,memo,tags
+2026-07-01,expense,etc,300,test,
+2026-06-30,expense,,500,test,
+2026-04-25,income,salary,10,test,

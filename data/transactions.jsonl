@@ -1,0 +1,5 @@
+{"id": "TX-000001", "date": "2026-04-25", "type": "income", "category": "salary", "amount": 10, "memo": "test", "tags": []}
+{"id": "TX-000002", "date": "2026-06-30", "type": "expense", "category": "etc", "amount": 500, "memo": "test", "tags": []}
+{"id": "TX-000003", "date": "2026-07-01", "type": "expense", "category": "etc", "amount": 300, "memo": "test", "tags": []}
+{"id": "TX-000004", "date": "2026-07-01", "type": "expense", "category": "etc", "amount": 300, "memo": "test", "tags": []}
+{"id": "TX-000005", "date": "2026-04-25", "type": "income", "category": "salary", "amount": 10, "memo": "test", "tags": []}
